@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -15,11 +16,11 @@ class Base(db.Model):
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-# 该表为求职者与职位的关联表，由SQLAlchemy自动接管
-registrations = db.Table('registrations',
-                         db.Column('user_id', db.Integer,
-                                   db.ForeignKey('user.id')),
-                         db.Column('job_id', db.Integer, db.ForeignKey('job.id')))
+# 该表为求职者与职位的关联表，用于实现用户收藏职位功能，由SQLAlchemy自动接管
+user_job = db.Table('user_job',
+                    db.Column('user_id', db.Integer,
+                              db.ForeignKey('user.id')),
+                    db.Column('job_id', db.Integer, db.ForeignKey('job.id')))
 
 
 class User(Base):
@@ -36,20 +37,11 @@ class User(Base):
     username = db.Column(db.String(32), unique=True,
                          index=True, nullable=False)
     email = db.Column(db.String(64), unique=True, index=True, nullable=False)
-
     # 默认情况下，sqlalchemy 会以字段名来定义列名，但这里是 _password, 所以明确指定数据库表列名为 password
     _password = db.Column('password', db.String(256), nullable=False)
-    fullname = db.Column(db.String(32), unique=True,
-                         index=True, nullable=False)
-    company_id = db.Column(db.Integer, db.ForeignKey(
-        'company.id', ondelete='CASCADE'), default=0)
-    company = db.relationship('Company', uselist=False)
-    phone_num = db.Column(db.String(32), unique=True,
-                          index=True, nullable=False)
-
-    # 多对多的关系可以在任何一张表中定义，此处定义在user表中，backref处理关系另一侧
-    jobs = db.relationship('job', secondary=registrations, backref=db.backref('user', lazy='dynamic'),
-                           lazy='dynamic')
+    # 用户收藏职位
+    collect_jobs = db.relationship('Job', secondary='user_job')
+    upload_resume_ulr = db.Column(db.String(64))
     role = db.Column(db.SmallInteger, default=ROLE_USER)
 
     def __repr__(self):
@@ -82,11 +74,15 @@ class Job(Base):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True, nullable=False)
-    salary = db.Column(db.String(32))
+    salary_low = db.Column(db.Integer, nullable=False)
+    salary_high = db.Column(db.Integer, nullable=False)
     experience = db.Column(db.String(32))
     location = db.Column(db.String(32))
     description = db.Column(db.Text)
     requirements = db.Column(db.Text)
+    company_id = db.Column(db.Integer, db.ForeignKey('company.id', ondelete='CASCADE'))
+    #公司与职位是一对多的关系，uselist设置为False
+    company = db.relationship('Company', uselist=False)
 
     def __repr__(self):
         return '<Job:{}>'.format(self.name)
@@ -102,9 +98,37 @@ class Company(Base):
     logo_url = db.Column(db.String(256))
     website = db.Column(db.String(256))
     slogan = db.Column(db.String(256))
+    field = db.Column(db.String(32))
+    financeStage = db.Column(db.String(32))
     description = db.Column(db.Text)
-    user = db.relationship('User', uselist=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'))
+    # 一对一关系，双向都设置uselist为False
+    user = db.relationship('User', uselist=False, backref=db.backref('company', uselist=False))
 
     def __repr__(self):
         return '<Company:{}>'.format(self.name)
 
+
+class Dilivery(Base):
+    """求职者与职位关联表
+    """
+    __tablename__ = 'delivery'
+
+    # 企业回应状态
+    # 已投递
+    STATUS_POSTED = 1
+    # 被查看
+    STATUS_CHECKED = 2
+    # 被拒绝
+    STATUS_REJECT = 3
+    # 被接收，等待面试通知
+    STATUS_ACCEPT = 5
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey(
+        'job.id', ondelete='SET NULL'))
+    user_id = db.Column(db.Integer, db.ForeignKey(
+        'user.id', ondelete='SET NULL'))
+    status = db.Column(db.SmallInteger, default=STATUS_POSTED)
+    # 企业回应
+    response = db.Column(db.String(256))
