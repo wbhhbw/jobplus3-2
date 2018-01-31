@@ -52,7 +52,7 @@ def parse_one_page(data):
 
 def save_to_file(json_data):
     with open('company_detail.json', 'a') as f:
-        f.write(json.dumps(json_data)+',')
+        f.write(json.dumps(json_data)+',\n')
 
 
 def main():
@@ -60,7 +60,7 @@ def main():
     count = 1
     with open('company_detail.json', 'a') as f:
         f.write('[')
-    while count < 11:
+    while count < 5:
         print('第%d批公司，抓取中...' % count)
         data = get_one_page(url, count)
         for company in parse_one_page(data):

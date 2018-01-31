@@ -9,7 +9,7 @@ fake = Factory.create('zh_CN')
 
 
 def iter_company_user():
-    for i in range(160):
+    for i in range(63):
         yield User(
             username=fake.lexify(text='??????'),
             email=fake.email(),
@@ -20,21 +20,23 @@ def iter_company_user():
 
 # 从datas中读取公司数据测试数据
 def iter_companies():
-    for user in User.query:
-        with open(os.path.join(os.path.dirname(__file__), '..', 'datas', 'company_detail.json')) as f:
-            companies = json.load(f)
-        for company in companies:
-            yield Company(
-                name=company['company_name'],
-                address=fake.address(),
-                logo_url=company['logo_url'],
-                website=fake.url(),
-                slogan=company['companyFeatures'],
-                field=company['field'],
-                financeStage=company['financeStage'],
-                description=fake.text(),
-                user=user
-            )
+    count = 1
+    with open(os.path.join(os.path.dirname(__file__), '..', 'datas', 'company_detail.json')) as f:
+        companies = json.load(f)
+    for company in companies:
+        user = User.query.get(count)
+        count += 1
+        yield Company(
+            name=company['company_name'],
+            address=fake.address(),
+            logo_url=company['logo_url'],
+            website=fake.url(),
+            slogan=company['companyFeatures'],
+            field=company['field'],
+            financeStage=company['financeStage'],
+            description=fake.text(),
+            user=user
+        )
 
 
 def iter_jobs():
@@ -43,13 +45,13 @@ def iter_jobs():
         for i in range(randint(3, 10)):
             yield Job(
                 name=fake.word() + '工程师',
-                salary_low=randint(3, 6),
-                salary_high=salary_low * 2,
+                salary_low=randint(4, 10),
+                salary_high=randint(10, 20),
                 experience='1-3年',
                 location=fake.city(),
-                description=fake1.paragraph(
+                description=fake.paragraph(
                     nb_sentences=3, variable_nb_sentences=True),
-                requirements=fake1.paragraph(
+                requirements=fake.paragraph(
                     nb_sentences=3, variable_nb_sentences=True),
                 company=company
             )
@@ -66,7 +68,7 @@ def run():
 
     for job in iter_jobs():
         db.session.add(job)
-        
+
     try:
         db.session.commit()
     except Exception as e:
