@@ -36,7 +36,7 @@ class User(Base):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(32), unique=True,
                          index=True, nullable=False)
-    email = db.Column(db.String(64), unique=True, index=True, nullable=False)
+    email = db.Column(db.String(64), index=True,  unique=True, nullable=False)
     # 默认情况下，sqlalchemy 会以字段名来定义列名，但这里是 _password, 所以明确指定数据库表列名为 password
     _password = db.Column('password', db.String(256), nullable=False)
     # 用户收藏职位
@@ -80,8 +80,9 @@ class Job(Base):
     location = db.Column(db.String(32))
     description = db.Column(db.Text)
     requirements = db.Column(db.Text)
-    company_id = db.Column(db.Integer, db.ForeignKey('company.id', ondelete='CASCADE'))
-    #公司与职位是一对多的关系，uselist设置为False
+    company_id = db.Column(db.Integer, db.ForeignKey(
+        'company.id', ondelete='CASCADE'))
+    # 公司与职位是一对多的关系，uselist设置为False
     company = db.relationship('Company', uselist=False)
 
     def __repr__(self):
@@ -92,8 +93,7 @@ class Company(Base):
     __tablename__ = 'company'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), unique=True,
-                     index=True, nullable=False)
+    name = db.Column(db.String(128), index=True, nullable=False)
     address = db.Column(db.String(256), nullable=False)
     logo_url = db.Column(db.String(256))
     website = db.Column(db.String(256))
@@ -101,9 +101,11 @@ class Company(Base):
     field = db.Column(db.String(32))
     financeStage = db.Column(db.String(32))
     description = db.Column(db.Text)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'))
+    user_id = db.Column(db.Integer, db.ForeignKey(
+        'user.id', ondelete='SET NULL'))
     # 一对一关系，双向都设置uselist为False
-    user = db.relationship('User', uselist=False, backref=db.backref('company', uselist=False))
+    user = db.relationship('User', uselist=False,
+                           backref=db.backref('company', uselist=False))
 
     def __repr__(self):
         return '<Company:{}>'.format(self.name)
